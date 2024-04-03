@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from timm.models.layers import trunc_normal_
 import math
 from mamba_ssm import Mamba
-
+from einops import rearrange
 
 class PVMLayer(nn.Module):
     def __init__(self, input_dim, output_dim, d_state = 16, d_conv = 4, expand = 2):
@@ -21,27 +21,35 @@ class PVMLayer(nn.Module):
         )
         self.proj = nn.Linear(input_dim, output_dim)
         self.skip_scale= nn.Parameter(torch.ones(1))
-    
+        self.msc = MSC(input_dim) 
+        self.dim_back = nn.Linear(input_dim*2,input_dim)
     def forward(self, x):
         if x.dtype == torch.float16:
             x = x.type(torch.float32)
         B, C = x.shape[:2]
         assert C == self.input_dim
+        msc_out = self.msc(x)
+        msc_out = rearrange(msc_out, 'b h w c-> b (h w) c')
+        # print("$$$",msc_out.shape)
         n_tokens = x.shape[2:].numel()
         img_dims = x.shape[2:]
         x_flat = x.reshape(B, C, n_tokens).transpose(-1, -2)
         x_norm = self.norm(x_flat)
-
+        # print('---',x_norm.shape,msc_out.shape)
         x1, x2, x3, x4 = torch.chunk(x_norm, 4, dim=2)
         x_mamba1 = self.mamba(x1) + self.skip_scale * x1
         x_mamba2 = self.mamba(x2) + self.skip_scale * x2
         x_mamba3 = self.mamba(x3) + self.skip_scale * x3
         x_mamba4 = self.mamba(x4) + self.skip_scale * x4
-        x_mamba = torch.cat([x_mamba1, x_mamba2,x_mamba3,x_mamba4], dim=2)
-
+        # print("---",x_mamba4.shape)
+        x_mamba = torch.cat([x_mamba1, x_mamba2,x_mamba3,x_mamba4,msc_out], dim=2)
+        x_mamba = self.dim_back(x_mamba)
+        # print("###",x_mamba.shape)
         x_mamba = self.norm(x_mamba)
         x_mamba = self.proj(x_mamba)
         out = x_mamba.transpose(-1, -2).reshape(B, self.output_dim, *img_dims)
+        # assert False
+
         return out
 
 
@@ -245,4 +253,104 @@ class UltraLight_VM_UNet(nn.Module):
         
         return torch.sigmoid(out0)
 
+class MSC(nn.Module):
+    def __init__(self, dim, kernel_size=3, stride=1, padding=1,proj_drop=0.,
+        **kwargs, ):
+        super().__init__()
+        
+        self.cnn_in = cnn_in = dim // 2
+        self.pool_in = pool_in = dim // 2
+        
+        self.cnn_dim = cnn_dim = cnn_in * 2
+        self.pool_dim = pool_dim = pool_in * 2
 
+        self.conv1 = nn.Conv2d(cnn_in, cnn_dim, kernel_size=1, stride=1, padding=0, bias=False)
+        self.proj1 = nn.Conv2d(cnn_dim, cnn_dim, kernel_size=kernel_size, stride=stride, padding=padding, bias=False, groups=cnn_dim)
+        self.mid_gelu1 = nn.GELU()
+       
+        self.Maxpool = nn.MaxPool2d(kernel_size, stride=stride, padding=padding)
+        self.proj2 = nn.Conv2d(pool_in, pool_dim, kernel_size=1, stride=1, padding=0)
+        self.mid_gelu2 = nn.GELU()
+
+        self.conv_fuse = nn.Conv2d(dim*2, dim*2, kernel_size=3, stride=1, padding=1, bias=False, groups=dim)
+        self.proj = nn.Conv2d(dim*2, dim, kernel_size=1, stride=1, padding=0)
+        self.proj_drop = nn.Dropout(proj_drop)
+    def forward(self, x):
+        # B, C H, W
+        
+        cx = x[:,:self.cnn_in,:,:].contiguous()
+        cx = self.conv1(cx)
+        cx = self.proj1(cx)
+        cx = self.mid_gelu1(cx)
+        
+        px = x[:,self.cnn_in:,:,:].contiguous()
+        px = self.Maxpool(px)
+        px = self.proj2(px)
+        px = self.mid_gelu2(px)
+        
+        x = torch.cat((cx, px), dim=1)
+        x = x + self.conv_fuse(x)
+        x = self.proj(x)
+        x = self.proj_drop(x)
+        x = x.permute(0, 2, 3, 1).contiguous()
+        return x
+
+# class HighMixer(nn.Module):
+#     def __init__(self, dim, kernel_size=3, stride=1, padding=1,
+#         **kwargs, ):
+#         super().__init__()
+        
+#         self.cnn_in = cnn_in = dim // 2
+#         self.pool_in = pool_in = dim // 2
+        
+#         self.cnn_dim = cnn_dim = cnn_in * 2
+#         self.pool_dim = pool_dim = pool_in * 2
+
+#         self.conv1 = nn.Conv2d(cnn_in, cnn_dim, kernel_size=1, stride=1, padding=0, bias=False)
+#         self.proj1 = nn.Conv2d(cnn_dim, cnn_dim, kernel_size=kernel_size, stride=stride, padding=padding, bias=False, groups=cnn_dim)
+#         self.mid_gelu1 = nn.GELU()
+       
+#         self.Maxpool = nn.MaxPool2d(kernel_size, stride=stride, padding=padding)
+#         self.proj2 = nn.Conv2d(pool_in, pool_dim, kernel_size=1, stride=1, padding=0)
+#         self.mid_gelu2 = nn.GELU()
+
+#     def forward(self, x):
+#         # B, C H, W
+        
+#         cx = x[:,:self.cnn_in,:,:].contiguous()
+#         cx = self.conv1(cx)
+#         cx = self.proj1(cx)
+#         cx = self.mid_gelu1(cx)
+        
+#         px = x[:,self.cnn_in:,:,:].contiguous()
+#         px = self.Maxpool(px)
+#         px = self.proj2(px)
+#         px = self.mid_gelu2(px)
+        
+#         hx = torch.cat((cx, px), dim=1)
+#         return hx
+
+# class MSC(nn.Module):
+#     def __init__(self, dim, num_heads=8, qkv_bias=False, attn_drop=0., proj_drop=0., attention_head=1, pool_size=2, 
+#         **kwargs, ):
+#         super().__init__()
+#         self.num_heads = num_heads
+#         self.head_dim = head_dim = dim // num_heads
+        
+
+#         self.high_dim = dim
+        
+#         self.high_mixer = HighMixer(dim)
+#         self.conv_fuse = nn.Conv2d(dim*2, dim*2, kernel_size=3, stride=1, padding=1, bias=False, groups=dim)
+#         self.proj = nn.Conv2d(dim*2, dim, kernel_size=1, stride=1, padding=0)
+#         self.proj_drop = nn.Dropout(proj_drop)
+        
+#     def forward(self, x):
+
+#         print('@@@',x.shape,)
+#         x = self.high_mixer(x)
+#         x = x + self.conv_fuse(x)
+#         x = self.proj(x)
+#         x = self.proj_drop(x)
+#         x = x.permute(0, 2, 3, 1).contiguous()
+#         return x

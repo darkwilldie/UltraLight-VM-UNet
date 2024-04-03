@@ -35,18 +35,10 @@ def main(config):
 
     log_config_info(config, logger)
 
-
-
-
-
     print('#----------GPU init----------#')
     set_seed(config.seed)
     gpu_ids = [0]# [0, 1, 2, 3]
     torch.cuda.empty_cache()
-
-
-
-
 
     print('#----------Preparing dataset----------#')
     train_dataset = isic_loader(path_Data = config.data_path, train = True)
@@ -70,9 +62,6 @@ def main(config):
                                 num_workers=config.num_workers,
                                 drop_last=True)
 
-
-
-
     print('#----------Prepareing Models----------#')
     model_cfg = config.model_config
     model = UltraLight_VM_UNet(num_classes=model_cfg['num_classes'], 
@@ -84,10 +73,6 @@ def main(config):
     model = torch.nn.DataParallel(model.cuda(), device_ids=gpu_ids, output_device=gpu_ids[0])
 
 
-
-
-
-
     print('#----------Prepareing loss, opt, sch and amp----------#')
     criterion = config.criterion
     optimizer = get_optimizer(config, model)
@@ -95,17 +80,10 @@ def main(config):
     scaler = GradScaler()
 
 
-
-
-
     print('#----------Set other params----------#')
     min_loss = 999
     start_epoch = 1
     min_epoch = 1
-
-
-
-
 
     if os.path.exists(resume_model):
         print('#----------Resume Model and Other params----------#')
