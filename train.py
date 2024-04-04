@@ -3,7 +3,7 @@ from torch import nn
 from torch.cuda.amp import autocast, GradScaler
 from torch.utils.data import DataLoader
 from loader import *
-
+import matplotlib.pyplot as plt
 from models.UltraLight_VM_UNet import UltraLight_VM_UNet
 from engine import *
 import os
@@ -72,14 +72,11 @@ def main(config):
     
     model = torch.nn.DataParallel(model.cuda(), device_ids=gpu_ids, output_device=gpu_ids[0])
 
-
     print('#----------Prepareing loss, opt, sch and amp----------#')
     criterion = config.criterion
     optimizer = get_optimizer(config, model)
     scheduler = get_scheduler(config, optimizer)
     scaler = GradScaler()
-
-
     print('#----------Set other params----------#')
     min_loss = 999
     start_epoch = 1
@@ -98,11 +95,9 @@ def main(config):
         log_info = f'resuming model from {resume_model}. resume_epoch: {saved_epoch}, min_loss: {min_loss:.4f}, min_epoch: {min_epoch}, loss: {loss:.4f}'
         logger.info(log_info)
 
-
-
-
-
     print('#----------Training----------#')
+
+    loss_values = []
     for epoch in tqdm(range(start_epoch, config.epochs + 1)):
 
         torch.cuda.empty_cache()
@@ -127,8 +122,8 @@ def main(config):
                 logger,
                 config
             )
-
-
+        # Append the loss value to the list
+        loss_values.append(loss)
         if loss < min_loss:
             torch.save(model.module.state_dict(), os.path.join(checkpoint_dir, 'best.pth'))
             min_loss = loss
@@ -144,6 +139,15 @@ def main(config):
                 'optimizer_state_dict': optimizer.state_dict(),
                 'scheduler_state_dict': scheduler.state_dict(),
             }, os.path.join(checkpoint_dir, 'latest.pth')) 
+
+        plt.figure()
+        ax = plt.gca()
+        ax.plot(loss_values)
+        ax.set_title('Training Loss')
+        ax.set_xlabel('Epoch')
+        ax.set_ylabel('Loss')
+        plt.savefig(os.path.join(config.work_dir, f"loss.png"))
+        plt.close()
 
     if os.path.exists(os.path.join(checkpoint_dir, 'best.pth')):
         print('#----------Testing----------#')
