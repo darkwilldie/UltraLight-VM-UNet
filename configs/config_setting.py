@@ -41,8 +41,8 @@ class setting_config:
     world_size = None
     rank = None
     amp = False
-    batch_size = 8
-    epochs = 250
+    batch_size = 24
+    epochs = 300
 
     work_dir = 'results/' + network + '_' + datasets + '_' + datetime.now().strftime('%A_%d_%B_%Y_%Hh_%Mm_%Ss') + '/'
 
