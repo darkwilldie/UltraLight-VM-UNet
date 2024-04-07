@@ -8,32 +8,56 @@ class setting_config:
     the config of training setting.
     """
     network = 'UltraLight_VM_UNet' 
-    model_config = {
-        'num_classes': 1,
-        'input_channels': 3,
-        'c_list': [8,16,24,32,48,64],
-        'split_att': 'fc',
-        'bridge': True,
-    }
+    
 
     test_weights = ''
 
-    datasets = 'ISIC2018'
+    # datasets = 'ISIC2018'
+    datasets = 'Synapse'
     if datasets == 'ISIC2017':
-        data_path = ''
+        data_path = '/home/ljc/data/ISIC2017/'
     elif datasets == 'ISIC2018':
         data_path = '/home/ljc/data/ISIC2018/'
+    elif datasets == 'Synapse':
+        data_path = '/home/ljc/data/Synapse/train_npz'
+        list_dir = '/home/ljc/UltraLight-VM-UNet_17/lists/lists_Synapse'
+        volume_path = '/home/ljc/data/Synapse/test_vol_h5'
+        pretrained_path = '' # if using pretrained, please enter the path of weights
     elif datasets == 'PH2':
         data_path = ''
     else:
         raise Exception('datasets in not right!')
 
-    criterion = BceDiceLoss()
-
-    num_classes = 1
-    input_size_h = 256
-    input_size_w = 256
-    input_channels = 3
+    if 'ISIC' in datasets:
+        model_config = {
+        'num_classes': 1,
+        'input_channels': 3,
+        'c_list': [8,16,24,32,48,64],
+        'split_att': 'fc',
+        'bridge': True,
+        
+    }
+        criterion = BceDiceLoss()
+        num_classes = 1
+        input_size_h = 256
+        input_size_w = 256
+        input_channels = 3    
+    elif datasets == 'Synapse':
+        model_config = {
+        'num_classes': 9,
+        'input_channels': 1,
+        'c_list': [8,16,24,32,48,64],
+        'split_att': 'fc',
+        'bridge': True,
+        
+    }
+        input_size_h = 224
+        input_size_w = 224
+        num_classes = 9
+        criterion = CeDiceLoss(num_classes)
+        z_spacing = 1
+        input_channels = 3
+    
     distributed = False
     local_rank = -1
     num_workers = 0
@@ -42,10 +66,10 @@ class setting_config:
     rank = None
     amp = False
     batch_size = 24
-    epochs = 300
+    epochs = 600
 
-    work_dir = 'results/' + network + '_' + datasets + '_' + datetime.now().strftime('%A_%d_%B_%Y_%Hh_%Mm_%Ss') + '/'
-
+    work_dir = 'results_test/' + network + '_' + datasets + '_' + datetime.now().strftime('%A_%d_%B_%Y_%Hh_%Mm_%Ss') + '/'
+    # work_dir = 'results/' + network + '_' + datasets + '_' + datetime.now().strftime('%A_%d_%B_%Y_%Hh_%Mm_%Ss') + '/'
     print_interval = 20
     val_interval = 30
     save_interval = 100
@@ -71,10 +95,10 @@ class setting_config:
         weight_decay = 0.0001 # default: 0 – weight decay (L2 penalty) 
         amsgrad = False # default: False – whether to use the AMSGrad variant of this algorithm from the paper On the Convergence of Adam and Beyond
     elif opt == 'AdamW':
-        lr = 0.0001 # default: 1e-3 – learning rate
+        lr = 1e-3 # default: 1e-3 – learning rate
         betas = (0.9, 0.999) # default: (0.9, 0.999) – coefficients used for computing running averages of gradient and its square
         eps = 1e-8 # default: 1e-8 – term added to the denominator to improve numerical stability
-        weight_decay = 0.0001 # default: 1e-2 – weight decay coefficient
+        weight_decay = 1e-2 # default: 1e-2 – weight decay coefficient
         amsgrad = False # default: False – whether to use the AMSGrad variant of this algorithm from the paper On the Convergence of Adam and Beyond 
     elif opt == 'Adamax':
         lr = 2e-3 # default: 2e-3 – learning rate

@@ -157,13 +157,13 @@ class UltraLight_VM_UNet(nn.Module):
             nn.Conv2d(c_list[1], c_list[2], 3, stride=1, padding=1),
         )
         self.encoder4 = nn.Sequential(
-            PVMLayer(input_dim=c_list[2], output_dim=c_list[3],num_heads=self.num_heads[0],attention_head=self.attention_head[0])
+            PVMLayer(input_dim=c_list[2], output_dim=c_list[3])
         )
         self.encoder5 = nn.Sequential(
-            PVMLayer(input_dim=c_list[3], output_dim=c_list[4],num_heads=self.num_heads[1],attention_head=self.attention_head[1])
+            PVMLayer(input_dim=c_list[3], output_dim=c_list[4])
         )
         self.encoder6 = nn.Sequential(
-            PVMLayer(input_dim=c_list[4], output_dim=c_list[5],num_heads=self.num_heads[2],attention_head=self.attention_head[2])
+            PVMLayer(input_dim=c_list[4], output_dim=c_list[5])
         )
 
         if bridge: 
@@ -171,13 +171,13 @@ class UltraLight_VM_UNet(nn.Module):
             print('SC_Att_Bridge was used')
         
         self.decoder1 = nn.Sequential(
-            PVMLayer(input_dim=c_list[5], output_dim=c_list[4],num_heads=self.num_heads[2],attention_head=self.attention_head[2])
+            PVMLayer(input_dim=c_list[5], output_dim=c_list[4])
         ) 
         self.decoder2 = nn.Sequential(
-            PVMLayer(input_dim=c_list[4], output_dim=c_list[3],num_heads=self.num_heads[1],attention_head=self.attention_head[1])
+            PVMLayer(input_dim=c_list[4], output_dim=c_list[3])
         ) 
         self.decoder3 = nn.Sequential(
-            PVMLayer(input_dim=c_list[3], output_dim=c_list[2],num_heads=self.num_heads[0],attention_head=self.attention_head[0])
+            PVMLayer(input_dim=c_list[3], output_dim=c_list[2])
         )  
         self.decoder4 = nn.Sequential(
             nn.Conv2d(c_list[2], c_list[1], 3, stride=1, padding=1),
@@ -253,7 +253,8 @@ class UltraLight_VM_UNet(nn.Module):
         
         out0 = F.interpolate(self.final(out1),scale_factor=(2,2),mode ='bilinear',align_corners=True) # b, num_class, H, W
         
-        return torch.sigmoid(out0)
+        # return torch.sigmoid(out0)
+        return out0
 
 class MSC(nn.Module):
     def __init__(self, dim, kernel_size=3, stride=1, padding=1,proj_drop=0.,

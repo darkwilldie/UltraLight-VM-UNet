@@ -122,7 +122,6 @@ def main(config):
                 logger,
                 config
             )
-        # Append the loss value to the list
         loss_values.append(loss)
         if loss < min_loss:
             torch.save(model.module.state_dict(), os.path.join(checkpoint_dir, 'best.pth'))

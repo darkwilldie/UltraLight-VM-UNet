@@ -24,7 +24,8 @@ def main(config):
     sys.path.append(config.work_dir + '/')
     log_dir = os.path.join(config.work_dir, 'log')
     checkpoint_dir = os.path.join(config.work_dir, 'checkpoints')
-    resume_model = os.path.join('')
+    resume_model = '/home/ljc/results17/UltraLight_VM_UNet_ISIC2017_Saturday_06_April_2024_16h_16m_18s/checkpoints/best.pth'
+    # resume_model = os.path.join('')
     outputs = os.path.join(config.work_dir, 'outputs')
     if not os.path.exists(checkpoint_dir):
         os.makedirs(checkpoint_dir)
@@ -93,7 +94,6 @@ def main(config):
             logger,
             config,
         )
-
 
 
 if __name__ == '__main__':
