@@ -21,8 +21,7 @@ class PVMLayer(nn.Module):
         )
         self.proj = nn.Linear(input_dim, output_dim)
         self.skip_scale= nn.Parameter(torch.ones(1))
-        self.dim_back = nn.Linear(input_dim*2,input_dim)
-        self.dwconv = DEPTHWISECONV(input_dim*2,input_dim)
+
         self.msc = MSC(input_dim)
     def forward(self, x):
         if x.dtype == torch.float16:
@@ -253,8 +252,8 @@ class UltraLight_VM_UNet(nn.Module):
         
         out0 = F.interpolate(self.final(out1),scale_factor=(2,2),mode ='bilinear',align_corners=True) # b, num_class, H, W
         
-        # return torch.sigmoid(out0)
-        return out0
+        return torch.sigmoid(out0)
+        # return out0
 
 class MSC(nn.Module):
     def __init__(self, dim, kernel_size=3, stride=1, padding=1,proj_drop=0.,
@@ -298,24 +297,3 @@ class MSC(nn.Module):
         x = self.proj_drop(x)
         x = x.permute(0, 2, 3, 1).contiguous()
         return x
-
-class DEPTHWISECONV(nn.Module):
-    def __init__(self,in_ch,out_ch):
-        super(DEPTHWISECONV, self).__init__()
-        # 也相当于分组为1的分组卷积
-        self.depth_conv = nn.Conv2d(in_channels=in_ch,
-                                    out_channels=in_ch,
-                                    kernel_size=3,
-                                    stride=1,
-                                    padding=1,
-                                    groups=in_ch)
-        self.point_conv = nn.Conv2d(in_channels=in_ch,
-                                    out_channels=out_ch,
-                                    kernel_size=1,
-                                    stride=1,
-                                    padding=0,
-                                    groups=1)
-    def forward(self,input):
-        out = self.depth_conv(input)
-        out = self.point_conv(out)
-        return out

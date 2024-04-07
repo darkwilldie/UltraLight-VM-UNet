@@ -12,16 +12,16 @@ class setting_config:
 
     test_weights = ''
 
-    # datasets = 'ISIC2018'
-    datasets = 'Synapse'
+    datasets = 'ISIC2018'
+    # datasets = 'Synapse'
     if datasets == 'ISIC2017':
         data_path = '/home/ljc/data/ISIC2017/'
     elif datasets == 'ISIC2018':
         data_path = '/home/ljc/data/ISIC2018/'
     elif datasets == 'Synapse':
-        data_path = '/home/ljc/data/Synapse/train_npz'
-        list_dir = '/home/ljc/UltraLight-VM-UNet_17/lists/lists_Synapse'
-        volume_path = '/home/ljc/data/Synapse/test_vol_h5'
+        data_path = '/home/ljc/data/Synapse/train_npz/'
+        list_dir = '/home/ljc/UltraLight-VM-UNet_17/lists/lists_Synapse/'
+        volume_path = '/home/ljc/data/Synapse/test_vol_h5/'
         pretrained_path = '' # if using pretrained, please enter the path of weights
     elif datasets == 'PH2':
         data_path = ''
