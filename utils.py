@@ -10,7 +10,8 @@ import random
 import logging
 import logging.handlers
 from matplotlib import pyplot as plt
-
+from scipy.ndimage import zoom
+from medpy import metric
 
 def set_seed(seed):
     # for hash
@@ -309,7 +310,20 @@ def cal_params_flops(model, size, logger):
     total = sum(p.numel() for p in model.parameters())
     print("Total params: %.2fM" % (total/1e6))
     logger.info(f'flops: {flops/1e9}, params: {params/1e6}, Total params: : {total/1e6:.4f}')
-        
+
+
+def calculate_metric_percase(pred, gt):
+    pred[pred > 0] = 1
+    gt[gt > 0] = 1
+    if pred.sum() > 0 and gt.sum()>0:
+        dice = metric.binary.dc(pred, gt)
+        hd95 = metric.binary.hd95(pred, gt)
+        return dice, hd95
+    elif pred.sum() > 0 and gt.sum()==0:
+        return 1, 0
+    else:
+        return 0, 0
+
 def test_single_volume(image, label, net, classes, patch_size=[256, 256], 
                     test_save_path=None, case=None, z_spacing=1, val_or_test=False):
     image, label = image.squeeze(0).cpu().detach().numpy(), label.squeeze(0).cpu().detach().numpy()
