@@ -15,7 +15,7 @@ import argparse
 
 def update_config(config, args):
     for k, v in vars(args).items():
-        if hasattr(config, k) and v is not None:
+        if v is not None:
             setattr(config, k, v)
     return config
 
@@ -30,6 +30,7 @@ def add_argument_config(config):
     parser.add_argument('--batch_size', type=int, default=None, help='batch size')
     parser.add_argument('--epochs', type=int, default=None, help='epochs')
     parser.add_argument('--datasets', type=str, default=None, help='dataset name')
+    parser.add_argument('--test_name', type=str, default=None, help='test model name')
 
     args = parser.parse_args()
     update_config(config, args)

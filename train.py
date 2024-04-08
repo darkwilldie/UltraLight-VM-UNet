@@ -17,7 +17,11 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
-def main(config):
+def main():
+
+    # get configs from setting_config and command line arguments
+    config = setting_config
+    add_argument_config(config)
 
     print('#----------Creating logger----------#')
     sys.path.append(config.work_dir + '/')
@@ -148,10 +152,12 @@ def main(config):
         plt.savefig(os.path.join(config.work_dir, f"loss.png"))
         plt.close()
 
-    if os.path.exists(os.path.join(checkpoint_dir, 'best.pth')):
+    checkpoint_path = os.path.join(checkpoint_dir, 'best.pth')
+    if checkpoint_path:
         print('#----------Testing----------#')
-        best_weight = torch.load(config.work_dir + 'checkpoints/best.pth', map_location=torch.device('cpu'))
+        best_weight = torch.load(checkpoint_path, map_location=torch.device('cpu'))
         model.module.load_state_dict(best_weight)
+        logging.info(f"Best model is {min_epoch} epoch.")
         loss = test_one_epoch(
                 test_loader,
                 model,
@@ -159,13 +165,7 @@ def main(config):
                 logger,
                 config,
             )
-        os.rename(
-            os.path.join(checkpoint_dir, 'best.pth'),
-            os.path.join(checkpoint_dir, f'best-epoch{min_epoch}-loss{min_loss:.4f}.pth')
-        )      
 
 
 if __name__ == '__main__':
-    config = setting_config
-    add_argument_config(config)
-    main(config)
+    main()
