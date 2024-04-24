@@ -21,7 +21,8 @@ def main():
 
     # get configs from setting_config and command line arguments
     config = setting_config
-    add_argument_config(config)
+    config.add_argument_config()
+    config.set_opt_sch()
 
     print('#----------Creating logger----------#')
     sys.path.append(config.work_dir + '/')
